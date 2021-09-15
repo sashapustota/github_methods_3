@@ -167,7 +167,14 @@ The general linear model: $Y = X \beta + \epsilon$:
 Do a linear regression, expressing fuel usage as a function of weight using the function __lm__  
 ```{r, eval=FALSE}
 data(mtcars)
-model <- lm(formula=..., data=...)
+model <- lm(mpg ~ wt, data=mtcars)
+summary(model)
+
+bhat = sum((mtcars$wt - mean(mtcars$wt)) * mtcars$mpg) / sum((mtcars$wt - mean(mtcars$wt))^2)
+bhat
+
+model.matrix()
+
 ```
 1. extract $\hat{\beta}$, $Y$, $\hat{Y}$, $X$ and $\epsilon$ from __model__ (hint: have a look at the function __model.matrix__)  
     i. create a plot that illustrates $Y$ and $\hat{Y}$ (if you are feeling ambitious, also include $\epsilon$ (hint: you can use the function __arrows__))
