@@ -170,10 +170,80 @@ data(mtcars)
 model <- lm(mpg ~ wt, data=mtcars)
 summary(model)
 
-bhat = sum((mtcars$wt - mean(mtcars$wt)) * mtcars$mpg) / sum((mtcars$wt - mean(mtcars$wt))^2)
+### EXERCISE 1.
+
+## 1. Extracting values from the model
+
+#Extracting b-hat (slope)
+bee_hat = coef(model)[2]
+bee_hat
+
+#Extracting intercept
+intercept = coef(model)[1]
+intercept
+
+#Extracting both coefs
+coefs = coef(model)
+coefs
+
+#Extracting error
+error = sigma(model)
+error
+
+#Extracting design matrix X I guess?
+design_matrix = model.matrix(model)
+
+#Extracting Y and Y hat.
+#Ok so it seems that Y hat or Y star (I hope is the same) is basically design_matrix matrix-multiplied by coefs without an error.
+y_star = design_matrix %*% coefs
+
+#And then Y would be same but with errors, right?
+y_proper = design_matrix %*% coefs + error
+
+#Plotting both?
+df1 = tibble(x = mtcars$wt, y = mtcars$mpg, y_star = y_star)
+ggplot(data = df1) +
+  geom_smooth(aes(x = x, y = y, colour = "Data"))+
+  geom_smooth(aes(x = x, y = y_star, colour = "Model"))
+
+## 2. Making a quadratic model and estimating b-hat for it
+
+# First we build a quadratic model. We do that by squaring the predictor(which is weight in this case) and adding that to the OG dataframe.
+mtcars$wt2 = c(mtcars$wt^2)
+
+#No we build the same lm() but using the squared predictor instead.
+quad_model = lm(mpg ~ wt2 + wt, data = mtcars)
+summary(quad_model)
+
+#The model is slightly better.
+coef(quad_model)[2]
+
+#Actually I don't know how to do that. I guess you need to use the other method?
+bhat = sum((mtcars$wt2 - mean(mtcars$wt2)) * mtcars$mpg) / sum((mtcars$wt2 - mean(mtcars$wt2))^2)
 bhat
 
-model.matrix()
+# Estimate b_hat with function
+X <- cbind(1, mtcars$wt, mtcars$wt2)
+quad_b_hat <- solve(t(X) %*% X) %*% t(X) %*% mtcars$mpg
+quad_b_hat
+
+## 3. Comparing estimated b-hat and og b-hat.
+quad_b_hat
+coef(quad_model)
+
+# And now we do exercise 1 all over again, to plot Y against Y star in this new model. 
+
+# First we get the design matrix from the new model.
+quad_design_matrix = model.matrix(quad_model)
+quad_y_star = quad_design_matrix %*% coef(quad_model)
+
+# Make a new tibble and then plot it.
+df_quad = tibble(x = mtcars$wt, y = mtcars$mpg, y_star = quad_y_star)
+ggplot(data = df_quad) +
+  geom_smooth(aes(x = x, y = y, colour = "Data"))+
+  geom_smooth(aes(x = x, y = y_star, colour = "Model"))
+
+#Looks cool!!
 
 ```
 1. extract $\hat{\beta}$, $Y$, $\hat{Y}$, $X$ and $\epsilon$ from __model__ (hint: have a look at the function __model.matrix__)  
@@ -185,6 +255,75 @@ model.matrix()
 ## Exercise 2
 Compare the plotted quadratic fit to the linear fit  
 
+```{r}
+
+ggplot(data = df_quad) +
+  geom_smooth(aes(x = x, y = y, colour = "Data"))+
+  geom_smooth(aes(x = x, y = y_star, colour = "Model"))
+ggplot(data = df1) +
+  geom_smooth(aes(x = x, y = y, colour = "Data"))+
+  geom_smooth(aes(x = x, y = y_star, colour = "Model"))
+
+#1. Quad model seems to explain a bit more variance (0.8 compared to 0.7) but is it worth doing? Also the line looks nicer.
+
+#2. Calculate SSE.
+
+sse <- sum((fitted(model) - mtcars$mpg)^2)
+sse
+sse_quad <- sum((fitted(quad_model) - mtcars$mpg)^2)
+sse_quad
+
+# So SSE is around 30% smaller in quad model than in the regular model.
+
+
+#3. Cubic fits.
+
+# First we build a cubic model. We do that by cubing the predictor(which is weight in this case) and adding that to the OG dataframe.
+mtcars$wt3 = c(mtcars$wt^3)
+
+#No we build the same lm() but using the squared predictor instead.
+cubic_model = lm(mpg ~ wt3 + wt2 + wt, data = mtcars)
+summary(cubic_model)
+
+#The R-squared is actually less. And it gives me no significance? That's funny?
+
+#3.1 Plotting Y and Y star again in the same dataframe.
+
+# And now we do exercise 1 all over again, to plot Y against Y star in this new model. 
+
+# First we get the design matrix from the new model.
+cubic_design_matrix = model.matrix(cubic_model)
+cubic_y_star = cubic_design_matrix %*% coef(cubic_model)
+
+# Make a new tibble and then plot it.
+df_all = tibble(x = mtcars$wt, y = mtcars$mpg, y_star = quad_y_star, y_star_cubic = cubic_y_star)
+ggplot(data = df_all) +
+  geom_smooth(aes(x = x, y = y, colour = "Data"))+
+  geom_smooth(aes(x = x, y = y_star, colour = "Quad")) +
+  geom_smooth(aes(x = x, y = y_star_cubic, colour = "Cubic"))
+
+
+#3.2 Now comparing the sum of squared errors.
+
+sse_cubic <- sum((fitted(cubic_model) - mtcars$mpg)^2)
+sse_cubic
+sse_quad
+
+# Oh it's actually a tiny-tiny bit less(for the cubic model).
+
+#3.3 Estimate b-hat.
+
+coef(cubic_model)
+
+X <- cbind(1, mtcars$wt, mtcars$wt2, mtcars$wt3)
+cubic_b_hat <- solve(t(X) %*% X) %*% t(X) %*% mtcars$mpg
+cubic_b_hat
+
+#Actually I don't know what to comment on that!
+
+```
+
+
 1. which seems better?  
 2. calculate the sum of squared errors, (show the calculation based on $\epsilon$). Which fit has the lower sum?  
 3. now make a cubic fit ($y = {\beta}_{3} x^3 + {\beta}_{2} x^2 + {\beta}_{1} x + {\beta}_{0}$) and compare it to the quadratic fit  
@@ -195,12 +334,21 @@ Compare the plotted quadratic fit to the linear fit
 ```{r, echo=FALSE}
 lm(mpg ~ 1, data=mtcars)
 ```
+
 ## Exercise 3
 Doing a logistic regression - estimating the probability that a car has automatic transmission (0) or manual transmission (1) based on its weight
 ```{r, eval=FALSE}
 data(mtcars)
 logistic.model <- glm(formula=..., data=..., family='binomial)
 ```
+
+```{r}
+
+logmodel <- glm(formula= am~wt, data=mtcars, family='binomial')
+summary(logmodel)
+
+```
+
 
 Probabilities live on the range $(0, 1)$ - using the so-called logit function as a "link-function" we can map these onto the range $(-\infty, \infty)$, i.e. the real numbers.  
   
