@@ -1,0 +1,366 @@
+---
+title: "practical_exercise_3, Methods 3, 2021, autumn semester"
+author: "Aleks"
+date: "04/10/21"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+<style type="text/css">
+  body{
+  font-size: 14pt;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+pacman::p_load(dplyr, car, ggplot2, lme4, lmerTest, tidyverse, readbulk)
+
+```
+
+# Exercises and objectives
+The objectives of the exercises of this assignment are:  
+1) Download and organise the data and model and plot staircase responses based on fits of logistic functions  
+2) Fit multilevel models for response times  
+3) Fit multilevel models for count data  
+
+REMEMBER: In your report, make sure to include code that can reproduce the answers requested in the exercises below (__MAKE A KNITTED VERSION__)  
+REMEMBER: This assignment will be part of your final portfolio
+
+## Exercise 1
+
+Go to https://osf.io/ecxsj/files/ and download the files associated with Experiment 2 (there should be 29).  
+The data is associated with Experiment 2 of the article at the following DOI https://doi.org/10.1016/j.concog.2019.03.007  
+
+1) Put the data from all subjects into a single data frame  
+
+```{r}
+df = read_bulk("experiment_2")
+```
+
+
+2) Describe the data and construct extra variables from the existing variables
+
+**ALEKS**:
+
+Before expalining variables, it's important to contextualize them in the light of the study. The primary goal of this study was to assess whether the distinctness of one's expectations towards prospective stimuli influences how clearly they are experienced. The task used to investigate this was based on digit recognition, where participants are (very very briefly) shown a number and have to report whether it was even or odd.
+
+**trial.type**:
+  Before the actual experiment a staircase procedure was performed to strengthen the statistical power for detecting a positive relationship. This variable indicates whether the data collected for a participant was collected during the experiment, or during the staircase procedure. 
+
+**pas**:
+  The _Perceptual Awareness Scale_ is used to assess the "clarity" of the experience. It is ranked from 1 (No Experience) to 4(Clear Experience). 
+  
+**trial**:
+  Stimuli number as it was shown to the participant. For _staircase_ range from 1 to approx 80 (80 stimuli shown during the staircase procedure) and during the actual _experiment_ goes from 1 to approx 420 (420 total stimuli shown to the participant during the experiment stage).
+  
+**jitter X and Y**:
+  Coordinates for a slight jitter that was applied to the position of the target digit, randomly drawn from a uniform distribution that fell within ± 0.5° of the fixation point.
+  
+**odd digit**:
+
+**target.contrast**:
+  The contrast of the target stimulus, relative to the background, was adjusted to match the threshold of each individual participant.
+
+**target.frames**:
+  A number of frames the stimuli(digit) was shown for. 1 frame is 11.8ms
+  
+**cue**:
+  A cue indicating the set of digits from which the target digit would be randomly drawn from on that trial. Could be either 2(2:9), 4(24:57) or 8(2468:3579).
+  
+**task**:
+  Actually I don't understand what this is.
+  
+**target.type**:
+  Whether the digit presented was Even or Odd.
+  
+**rt.subj**:
+  Subjective reaction time as reported by participants?
+
+**rt.obj**:
+  Objective reaction time(as measured by the script).
+
+**even digit**:
+
+**seed**:
+  Seed used for generating random numbers.
+
+**obj.resp**:
+  The answer of the participant - whether he/she thought an even number was presented or odd number.
+
+    i. add a variable to the data frame and call it _correct_ (have it be a _logical_ variable). Assign a 1 to each row where the subject indicated the correct answer and a 0 to each row where the subject indicated the incorrect answer (__Hint:__ the variable _obj.resp_ indicates whether the subject answered "even", _e_ or "odd", _o_, and the variable _target_type_ indicates what was actually presented.
+    
+```{r}
+
+ df = df %>%
+  mutate(correct = ifelse(target.type == "even" & obj.resp == "e" |
+                          target.type == "odd" & obj.resp == "o", 1, 0))
+
+```
+
+    
+    ii. describe what the following variables in the data frame contain, _trial.type_, _pas_, _trial_, _target.contrast_, _cue_, _task_, _target_type_, _rt.subj_, _rt.obj_, _obj.resp_, _subject_ and _correct_. (That means you can ignore the rest of the variables in your description). For each of them, indicate and argue for what `class` they should be classified into, e.g. _factor_, _numeric_ etc.  
+    
+```{r}
+
+#Finish this.
+
+```
+    
+    
+    iii. for the staircasing part __only__, create a plot for each subject where you plot the estimated function (on the _target.contrast_ range from 0-1) based on the fitted values of a model (use `glm`) that models _correct_ as dependent on _target.contrast_. These plots will be our _no-pooling_ model. Comment on the fits - do we have enough data to plot the logistic functions? 
+  
+```{r}
+
+df_staircase = df %>%
+  filter(trial.type == "staircase")
+
+m1 = glm(correct ~ target.contrast, df_staircase, family = "binomial")
+
+ggplot(data = df_staircase, aes(x = target.contrast, y = fitted(m1))) +
+  geom_point() +
+  facet_wrap( ~ subject)
+
+```
+
+
+    iv. on top of those plots, add the estimated functions (on the _target.contrast_ range from 0-1) for each subject based on partial pooling model (use `glmer` from the package `lme4`) where unique intercepts and slopes for _target.contrast_ are modelled for each _subject_
+    
+  
+```{r}
+
+m2 = glmer(correct ~ target.contrast + (1+target.contrast|subject), df_staircase, family = "binomial")
+
+ggplot(data = df_staircase) +
+  geom_point(aes(x = target.contrast, y = fitted(m1), color = "no pooling")) +
+  geom_point(aes(x = target.contrast, y = fitted(m2), color = "partial pooling")) +
+  facet_wrap( ~ subject)
+
+```
+  
+    v. in your own words, describe how the partial pooling model allows for a better fit for each subject  
+
+## Exercise 2
+
+Now we __only__ look at the _experiment_ trials (_trial.type_)  
+
+```{r}
+
+df_experiment = df %>%
+  filter(trial.type == "experiment")
+
+```
+
+
+1) Pick four subjects and plot their Quantile-Quantile (Q-Q) plots for the residuals of their objective response times (_rt.obj_) based on a model where only intercept is modelled
+
+```{r}
+
+df_subject1 = df_experiment[which(df$subject == "1"),]
+df_subject2 = df_experiment[which(df$subject == "6"),]
+df_subject3 = df_experiment[which(df$subject == "11"),]
+df_subject4 = df_experiment[which(df$subject == "19"),]
+
+m3 = lm(rt.obj ~ 1, df_subject1)
+m4 = lm(rt.obj ~ 1, df_subject2)
+m5 = lm(rt.obj ~ 1, df_subject3)
+m6 = lm(rt.obj ~ 1, df_subject4)
+
+par(mfrow=c(2,2))
+qqPlot(resid(m3))
+qqPlot(resid(m4))
+qqPlot(resid(m5))
+qqPlot(resid(m6))
+
+```
+
+    i. comment on these
+    
+**ALEKS**: All of them look pretty right skewed, which is not optimal.
+
+    ii. does a log-transformation of the response time data improve the Q-Q-plots?  
+    
+```{r}
+
+m3_log = lm(log(rt.obj) ~ 1, data = df_subject1)
+m4_log = lm(log(rt.obj) ~ 1, data = df_subject2)
+m5_log = lm(log(rt.obj) ~ 1, data = df_subject3)
+m6_log = lm(log(rt.obj) ~ 1, data = df_subject4)
+
+par(mfrow=c(2,2))
+
+qqPlot(resid(m3_log))
+qqPlot(resid(m4_log))
+qqPlot(resid(m5_log))
+qqPlot(resid(m6_log))
+
+```
+**ALEKS**: Yes. Whilst some light skeweness remains, log transformation does helo.
+
+2) Now do a partial pooling model modelling objective response times as dependent on _task_? (set `REML=FALSE` in your `lmer`-specification)
+
+```{r}
+
+m7 = lmer(rt.obj ~ task + (1|subject), df_experiment, REML = FALSE)
+summary(m7)
+
+```
+
+
+    i. which would you include among your random effects and why? (support your choices with relevant measures, taking into account variance explained and number of parameters going into the modelling)
+    
+```{r}
+#Finish this. Play around with different random effects and look at variance.
+```
+  
+    
+    ii. explain in your own words what your chosen models says about response times between the different tasks
+    
+**ALEKS**: The current chosen model(m7) suggests that the people generally react a bit faster on single(0.19ms) and quadruplet(0.15ms) tasks than on the paired task.
+
+```{r}
+#Not sure about the above, though, double check again when a bit less sleep deprived.
+```
+
+    
+3) Now add _pas_ and its interaction with _task_ to the fixed effects  
+    i. how many types of group intercepts (random effects) can you add without ending up with convergence issues or singular fits?
+    
+```{r}
+
+m8 = lmer(rt.obj ~ task * pas + (1|subject), df_experiment, REML = FALSE)
+#all ok
+
+m9 = lmer(rt.obj ~ task * pas + (1|subject) + (1|task) + (1|pas), df_experiment, REML = FALSE)
+#singular fit
+
+m10 = lmer(rt.obj ~ task * pas + (1|subject) + (1|task), df_experiment, REML = FALSE)
+#singular fit
+
+m11 = lmer(rt.obj ~ task * pas + (1|subject) + (1|pas), df_experiment, REML = FALSE)
+#all ok
+
+#Models that converged.
+summary(m8)
+summary(m11)
+
+```
+    
+    ii. create a model by adding random intercepts (without modelling slopes) that results in a singular fit - then use `print(VarCorr(<your.model>), comp='Variance')` to inspect the variance vector - explain why the fit is singular (Hint: read the first paragraph under details in the help for `isSingular`)
+
+```{r}
+#Do this.
+```
+
+
+    iii. in your own words - how could you explain why your model would result in a singular fit?
+
+```{r}
+#Do this.
+```
+
+    
+## Exercise 3
+
+1) Initialise a new data frame, `data.count`. _count_ should indicate the number of times they categorized their experience as _pas_ 1-4 for each _task_. I.e. the data frame would have for subject 1: for task:singles, pas1 was used # times, pas2 was used # times, pas3 was used # times and pas4 was used # times. You would then do the same for task:pairs and task:quadruplet  
+
+```{r}
+data.count = df %>%
+  group_by(subject, task, pas) %>%
+  summarise("count" = n())
+```        
+
+2) Now fit a multilevel model that models a unique "slope" for _pas_ for each _subject_ with the interaction between _pas_ and _task_ and their main effects being modelled
+
+```{r}
+
+m12 = glmer(count ~ pas * task + (pas|subject), data.count, family = poisson)
+summary(m12)
+
+```
+
+    i. which family should be used?
+    
+```{r}
+#I think Poisson. Get back to this.
+```
+    
+
+    ii. why is a slope for _pas_ not really being modelled?  
+    iii. if you get a convergence error, try another algorithm (the default is the _Nelder_Mead_) - try (_bobyqa_) for which the `dfoptim` package is needed. In `glmer`, you can add the following for the `control` argument: `glmerControl(optimizer="bobyqa")` (if you are interested, also have a look at the function `allFit`)
+    
+```{r}
+m13 = glmer(count ~ pas * task + (pas|subject), data.count, family = poisson, control = glmerControl(optimizer = "bobyqa"))
+#alright thats cool
+```
+    
+    
+    iv. when you have a converging fit - fit a model with only the main effects of _pas_ and _task_. Compare this with the model that also includes the interaction  
+  
+```{r}
+m14 = glmer(count ~ pas + task + (pas|subject), data.count, family = poisson, control = glmerControl(optimizer = "bobyqa"))
+tibble(sum(residuals(m13)**2), sum(residuals(m14)**2))
+AIC(m13, m14)
+```
+
+
+    v. indicate which of the two models, you would choose and why
+
+```{r}
+#Finish this.
+```
+
+
+    vi. based on your chosen model - write a short report on what this says about the distribution of ratings as dependent on _pas_ and _task_  
+```{r}
+#And this.
+```
+
+    vii. include a plot that shows the estimated amount of ratings for four subjects of your choosing
+    
+```{r}
+#And this. I guess I can just facet-wrap all of subjects as done previously?
+```
+
+
+3) Finally, fit a multilevel model that models _correct_ as dependent on _task_ with a unique intercept for each _subject_ 
+
+```{r}
+m15 <- glmer(correct ~ task + (1|subject), df, family = binomial)
+summary(m15)
+```
+
+    i. does _task_ explain performance?  
+    
+**ALEKS**: Yes. Singles are a bit easier than pairs, and quadruplets are a bit harder than pairs.    
+    
+    ii. add _pas_ as a main effect on top of _task_ - what are the consequences of that?  
+    
+```{r}
+m16 <- glmer(correct ~ task + pas + (1|subject), df, family = binomial)
+summary(m16)
+```
+
+**ALEKS**: Pretty interesting. I'll revisit this at a later point but it seems that the inclusion of PAS scores makes the influence of task on performance insignificant.
+
+    iii. now fit a multilevel model that models _correct_ as dependent on _pas_ with a unique intercept for each _subject_
+    
+```{r}
+
+m17 <- glmer(correct ~ pas + (1|subject), df, family = binomial)
+summary(m17)
+
+```
+    
+    iv. finally, fit a model that models the interaction between _task_ and _pas_  and their main effects  
+
+```{r}
+m18 <- glmer(correct ~ task * pas + (1|subject), df, family = binomial)
+summary(m18)
+```
+
+    
+    v. describe in your words which model is the best in explaining the variance in accuracy  
+
