@@ -109,7 +109,7 @@ model.matrix(model2)
 
 ggplot(data = politeness) +
   geom_point(aes(x = scenario, y = f0mn, colour = attitude)) +
-  facet_wrap(~ subject)
+  facet_wrap(~ subject) 
 
 ```
 

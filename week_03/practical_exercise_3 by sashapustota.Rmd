@@ -38,6 +38,7 @@ The data is associated with Experiment 2 of the article at the following DOI htt
 
 ```{r}
 df = read_bulk("experiment_2")
+str(car::strings2factors(df))
 ```
 
 
@@ -114,6 +115,8 @@ Before expalining variables, it's important to contextualize them in the light o
   
 ```{r}
 
+### THIS IS WRONG
+
 df_staircase = df %>%
   filter(trial.type == "staircase")
 
@@ -130,6 +133,8 @@ ggplot(data = df_staircase, aes(x = target.contrast, y = fitted(m1))) +
     
   
 ```{r}
+
+## AND THIS MAYBE AS WELL
 
 m2 = glmer(correct ~ target.contrast + (1+target.contrast|subject), df_staircase, family = "binomial")
 
